@@ -1068,21 +1068,31 @@ export default function OrbixApp({ supabaseUser, onSignOut }) {
   }, []);
 
   // ── Realtime WebSocket subscriptions ──────────────────────────────────────
+  // lastRealtimeTs: timestamp of last inbound realtime event.
+  // Sync effects skip writing back to DB if a realtime event just arrived
+  // (prevents: realtime → state → sync → DB write → realtime → ∞ loop)
+  const lastRealtimeTs = useRef(0);
+  const onRealtimeEvent = useCallback(() => { lastRealtimeTs.current = Date.now(); }, []);
+
   useEffect(() => {
     let unsub: (() => void) | null = null;
+    let mounted = true;
     import("@/lib/orbix-realtime").then(({ subscribeAll }) => {
-      unsub = subscribeAll({ setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers });
+      if (!mounted) return;
+      unsub = subscribeAll({ setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers, onRealtimeEvent });
     });
-    return () => { unsub?.(); };
-  }, []);
+    return () => { mounted = false; unsub?.(); };
+  }, [onRealtimeEvent]);
   // ──────────────────────────────────────────────────────────────────────────
 
-  useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncProjects})=>syncProjects(projects)); }, [projects]);
-  useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncTasks})=>syncTasks(tasks)); }, [tasks]);
-  useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncMeetings})=>syncMeetings(meetings)); }, [meetings]);
-  useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncMessages})=>syncMessages(messages)); }, [messages]);
-  useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncDepts})=>syncDepts(depts)); }, [depts]);
-  useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncMembers})=>syncMembers(users)); }, [users]);
+  // Sync effects: debounced 120ms, skip if change came from realtime (< 400ms ago)
+  const isLocalChange = () => syncReady.current && (Date.now() - lastRealtimeTs.current > 400);
+  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncProjects})=>syncProjects(projects)); },120); return()=>clearTimeout(t); }, [projects]);
+  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncTasks})=>syncTasks(tasks)); },120); return()=>clearTimeout(t); }, [tasks]);
+  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncMeetings})=>syncMeetings(meetings)); },120); return()=>clearTimeout(t); }, [meetings]);
+  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncMessages})=>syncMessages(messages)); },120); return()=>clearTimeout(t); }, [messages]);
+  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncDepts})=>syncDepts(depts)); },120); return()=>clearTimeout(t); }, [depts]);
+  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncMembers})=>syncMembers(users)); },120); return()=>clearTimeout(t); }, [users]);
   // ──────────────────────────────────────────────────────────────────────────
 
   if(!user) return (
