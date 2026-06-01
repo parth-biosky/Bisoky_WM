@@ -377,10 +377,10 @@ function SubtaskPanel({ task, onUpdate, onClose, currentUser }) {
         </div>
         <button onClick={onClose} style={{ background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.textMuted,padding:"2px 6px",borderRadius:5 }}>✕</button>
       </div>
-      <div style={{ display:"flex",flexDirection:"column",gap:5,marginBottom:10 }}>
+      <div style={{ display:"flex",flexDirection:"column",gap:5,marginBottom:10,maxHeight:280,overflowY:"auto",overflowX:"auto",scrollbarWidth:"thin",WebkitOverflowScrolling:"touch" }}>
         {!subs.length&&<span style={{ fontSize:12,color:T.textMuted,fontStyle:"italic" }}>No subtasks yet.</span>}
         {subs.map((s,i)=>{ const isOD=s.deadline&&new Date(s.deadline)<new Date()&&!s.done; const nc=visFilter(s.notes||[],currentUser.id).length; const cc=(s.chat||[]).length;
-          return (<div key={s.id} style={{ display:"grid",gridTemplateColumns:"20px 20px 1fr 100px 100px 130px 60px 60px 20px",gap:8,padding:"8px 10px",background:s.done?(T.dark?"#041209":"#F0FDF4"):T.surface,borderRadius:8,border:"1px solid "+(isOD?"#FCA5A5":s.done?(T.dark?"#1A4A2A":"#BBF7D0"):T.border),alignItems:"center" }}>
+          return (<div key={s.id} style={{ display:"grid",gridTemplateColumns:"20px 20px 1fr 100px 100px 130px 60px 60px 20px",gap:8,padding:"8px 10px",background:s.done?(T.dark?"#041209":"#F0FDF4"):T.surface,borderRadius:8,border:"1px solid "+(isOD?"#FCA5A5":s.done?(T.dark?"#1A4A2A":"#BBF7D0"):T.border),alignItems:"center",minWidth:620 }}>
             <div onClick={()=>upd(s.id,"done",!s.done)} style={{ width:17,height:17,borderRadius:5,border:"2px solid "+(s.done?"#10B981":T.borderMed),background:s.done?"#10B981":"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>{s.done&&<svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
             <span style={{ fontSize:9,fontWeight:700,color:T.textTiny }}>#{i+1}</span>
             <span style={{ fontSize:13,color:s.done?T.textMuted:T.text,textDecoration:s.done?"line-through":"none" }}>{s.title}</span>
@@ -535,8 +535,9 @@ function ProjectsDetail({ dept, projects, setProjects, tasks, currentUser, onBac
       <div style={{ flex:1,overflowY:"auto",background:T.bg,padding:"24px 28px" }}>
         {!visible.length&&!showAdd?(<div style={{ display:"flex",flexDirection:"column",alignItems:"center",padding:"80px 24px",background:T.surface,borderRadius:16,border:"2px dashed "+dept.color+"44",textAlign:"center" }}><div style={{ fontSize:48,marginBottom:16 }}>{dept.icon}</div><div style={{ fontSize:16,fontWeight:700,color:T.textSub,marginBottom:20 }}>No projects in {dept.key} yet</div><button onClick={()=>setShowAdd(true)} style={{ padding:"11px 28px",borderRadius:10,background:dept.color,color:"#fff",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:T.font }}>+ New Project</button></div>):(
           <div style={{ background:T.surface,border:"1px solid "+T.border,borderRadius:16,overflow:"hidden" }}>
-            <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1.4fr 1fr 28px",padding:"11px 20px",background:T.bg,borderBottom:"1px solid "+T.border,gap:8 }}>{["Project","Team","Status","Progress","Deadline",""].map(h=><span key={h} style={{ fontSize:11,fontWeight:600,color:T.textMuted,letterSpacing:0.6,textTransform:"uppercase" }}>{h}</span>)}</div>
-            {visible.map((p,i)=>(<div key={p.id} style={{ display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1.4fr 1fr 28px",padding:"13px 20px",borderBottom:i<visible.length-1?"1px solid "+T.border:"none",alignItems:"center",gap:8 }} onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHov} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <div style={{ overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
+            <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1.4fr 1fr 28px",padding:"11px 20px",background:T.bg,borderBottom:"1px solid "+T.border,gap:8,minWidth:620 }}>{["Project","Team","Status","Progress","Deadline",""].map(h=><span key={h} style={{ fontSize:11,fontWeight:600,color:T.textMuted,letterSpacing:0.6,textTransform:"uppercase" }}>{h}</span>)}</div>
+            {visible.map((p,i)=>(<div key={p.id} style={{ display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1.4fr 1fr 28px",padding:"13px 20px",borderBottom:i<visible.length-1?"1px solid "+T.border:"none",alignItems:"center",gap:8,minWidth:620 }} onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHov} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <div><EditText value={p.name} onSave={v=>upd(p.id,"name",v)} style={{ fontSize:13,fontWeight:600 }}/>{!!p.tags?.length&&<div style={{ display:"flex",gap:4,marginTop:4,flexWrap:"wrap" }}>{p.tags.map(t=><Tag key={t} label={t}/>)}</div>}</div>
               <MultiAssignee values={p.team||[]} onSave={v=>upd(p.id,"team",v)} size={22} max={4}/>
               <EditSelect value={p.status} options={STATUSES.map(s=>({v:s,l:s}))} onSave={v=>upd(p.id,"status",v)} renderValue={v=><StatusBadge status={v}/>}/>
@@ -544,6 +545,7 @@ function ProjectsDetail({ dept, projects, setProjects, tasks, currentUser, onBac
               <EditDate value={p.deadline} onSave={v=>upd(p.id,"deadline",v)}/>
               <button onClick={()=>setDelId(p.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.textTiny,padding:"2px",borderRadius:4 }} onMouseEnter={e=>e.currentTarget.style.color="#EF4444"} onMouseLeave={e=>e.currentTarget.style.color=T.textTiny}>✕</button>
             </div>))}
+            </div>
           </div>
         )}
       </div>
@@ -571,7 +573,8 @@ function TasksView({ tasks, setTasks, projects, currentUser, depts }) {
       </div>
       {!visible.length?(<div style={{ display:"flex",flexDirection:"column",alignItems:"center",padding:"80px 24px",background:T.surface,borderRadius:16,border:"2px dashed "+T.border,textAlign:"center" }}><div style={{ fontSize:48,marginBottom:16 }}>✅</div><div style={{ fontSize:16,fontWeight:700,color:T.textSub,marginBottom:8 }}>No tasks found</div></div>):(
         <div style={{ background:T.surface,border:"1px solid "+T.border,borderRadius:16,overflow:"hidden" }}>
-          <div style={{ display:"grid",gridTemplateColumns:COLS,padding:"11px 18px",background:T.bg,borderBottom:"1px solid "+T.border,gap:8,alignItems:"center" }}><span/>{["Task","Assignees","Status","Priority","Due","Subtasks",""].map(h=><span key={h} style={{ fontSize:11,fontWeight:600,color:T.textMuted,letterSpacing:0.6,textTransform:"uppercase" }}>{h}</span>)}</div>
+          <div style={{ overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
+          <div style={{ display:"grid",gridTemplateColumns:COLS,padding:"11px 18px",background:T.bg,borderBottom:"1px solid "+T.border,gap:8,alignItems:"center",minWidth:700 }}><span/>{["Task","Assignees","Status","Priority","Due","Subtasks",""].map(h=><span key={h} style={{ fontSize:11,fontWeight:600,color:T.textMuted,letterSpacing:0.6,textTransform:"uppercase" }}>{h}</span>)}</div>
           {visible.map(t=>{ const proj=projects.find(p=>p.id===t.project); const subs=t.subtasks||[],subDone=subs.filter(s=>s.done).length,subPct=subs.length?Math.round(subDone/subs.length*100):null; const pCol=subPct===null?T.textMuted:subPct===100?"#10B981":subPct>=60?"#F59E0B":"#EF4444"; const isExp=expanded===t.id; const dept=depts.find(d=>d.key===proj?.category);
             return (<div key={t.id}><div style={{ display:"grid",gridTemplateColumns:COLS,padding:"12px 18px",borderBottom:"1px solid "+T.border,alignItems:"center",gap:8,background:isExp?T.accentSub:"transparent" }} onMouseEnter={e=>{ if(!isExp) e.currentTarget.style.background=T.surfaceHov; }} onMouseLeave={e=>{ if(!isExp) e.currentTarget.style.background="transparent"; }}>
               <button onClick={()=>setExpanded(isExp?null:t.id)} style={{ width:22,height:22,borderRadius:6,border:"1px solid "+(isExp?"#0052CC":T.border),background:isExp?"#0052CC":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:isExp?"#fff":T.textMuted,transition:"all .15s" }}><span style={{ display:"inline-block",transform:isExp?"rotate(90deg)":"rotate(0)",transition:"transform .2s" }}>▶</span></button>
@@ -583,6 +586,7 @@ function TasksView({ tasks, setTasks, projects, currentUser, depts }) {
               <div style={{ display:"flex",flexDirection:"column",gap:3 }}>{subPct===null?<span style={{ fontSize:11,color:T.textTiny,cursor:"pointer" }} onClick={()=>setExpanded(t.id)}>+ subtasks</span>:<><div style={{ display:"flex",justifyContent:"space-between" }}><span style={{ fontSize:11,fontWeight:700,color:pCol }}>{subPct}%</span><span style={{ fontSize:10,color:T.textMuted }}>{subDone}/{subs.length}</span></div><Bar pct={subPct} color={pCol} height={5}/></>}</div>
               <button onClick={()=>setDelId(t.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.textTiny,padding:"2px",borderRadius:4 }} onMouseEnter={e=>e.currentTarget.style.color="#EF4444"} onMouseLeave={e=>e.currentTarget.style.color=T.textTiny}>✕</button>
             </div>{isExp&&<SubtaskPanel task={t} onUpdate={updFull} onClose={()=>setExpanded(null)} currentUser={currentUser}/>}</div>); })}
+          </div>
         </div>
       )}
     </Page>
