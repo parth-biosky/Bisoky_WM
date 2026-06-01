@@ -1067,6 +1067,16 @@ export default function OrbixApp({ supabaseUser, onSignOut }) {
     });
   }, []);
 
+  // ── Realtime WebSocket subscriptions ──────────────────────────────────────
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    import("@/lib/orbix-realtime").then(({ subscribeAll }) => {
+      unsub = subscribeAll({ setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers });
+    });
+    return () => { unsub?.(); };
+  }, []);
+  // ──────────────────────────────────────────────────────────────────────────
+
   useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncProjects})=>syncProjects(projects)); }, [projects]);
   useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncTasks})=>syncTasks(tasks)); }, [tasks]);
   useEffect(() => { if (!syncReady.current) return; import("@/lib/orbix-db").then(({syncMeetings})=>syncMeetings(meetings)); }, [meetings]);
