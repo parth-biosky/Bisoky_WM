@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const PROD_URL = "https://bisoky-wm.onrender.com";
+
 type Step = "email" | "otp";
 
 export default function ForgotPasswordPage() {
@@ -22,7 +24,7 @@ export default function ForgotPasswordPage() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password&type=recovery`,
+      redirectTo: `${PROD_URL}/auth/callback?next=/reset-password&type=recovery`,
     });
     if (error) {
       setError(error.message);
