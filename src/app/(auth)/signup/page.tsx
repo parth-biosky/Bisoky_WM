@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const PROD_URL = "https://bisoky-wm.onrender.com";
+
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -12,6 +14,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -19,12 +22,12 @@ export default function SignupPage() {
     setError(null);
 
     const supabase = createClient();
+    const redirectTo = `${PROD_URL}/auth/callback`;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { emailRedirectTo: redirectTo },
     });
 
     if (error) {
@@ -33,7 +36,7 @@ export default function SignupPage() {
       return;
     }
 
-    // Store member profile in DB (trigger also handles this but we set the proper name here)
+    // Store member profile in DB
     if (data.user) {
       const memberId = Date.now();
       await supabase.from("team_members").upsert([{
@@ -50,8 +53,34 @@ export default function SignupPage() {
       }]);
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    // Show verification message instead of redirecting
+    setVerified(true);
+    setLoading(false);
+  }
+
+  if (verified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+          <div className="text-5xl mb-4">📧</div>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Check your email</h1>
+          <p className="text-gray-500 text-sm mb-2">
+            We sent a verification link to
+          </p>
+          <p className="font-medium text-gray-800 mb-6">{email}</p>
+          <p className="text-gray-400 text-xs mb-6">
+            Click the link in the email to verify your account and complete sign up.
+            Check your spam folder if you don't see it.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-2 text-sm font-medium transition-colors"
+          >
+            Back to sign in
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

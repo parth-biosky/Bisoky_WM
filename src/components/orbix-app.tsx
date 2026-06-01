@@ -1048,11 +1048,17 @@ export default function OrbixApp({ supabaseUser, onSignOut }) {
         if (data.messages?.length) setMessages(data.messages);
         if (data.members?.length) {
           setUsers(data.members);
-          // Update current user profile from DB (picks up role/dept changes)
           const me = data.members.find(m => m.email === supabaseUser?.email);
           if (me) { setUser(me); setActive(me.role==="admin"?"projects":"dashboard"); }
         }
-        setTimeout(() => { syncReady.current = true; }, 150);
+        // First-time cloud setup: seed defaults into DB if empty
+        setTimeout(() => {
+          syncReady.current = true;
+          import("@/lib/orbix-db").then(({ syncDepts, syncMembers }) => {
+            if (!data.depts?.length) syncDepts(DEFAULT_DEPTS);
+            if (!data.members?.length) syncMembers(INITIAL_USERS);
+          });
+        }, 150);
       });
     });
   }, []);
