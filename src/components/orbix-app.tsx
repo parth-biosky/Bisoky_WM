@@ -211,9 +211,9 @@ function AddCategoryModal({ onSave, onClose, existingDepts }) {
     </Modal>
   );
 }
-function QuickAddModal({ type, preAssignee, projects, depts, onSave, onClose }) {
+function QuickAddModal({ type, preAssignee, projects, depts, onSave, onClose, fixedDept=null }) {
   const T = useT(); const isTask=type==="task";
-  const [vals,setVals]=useState(isTask?{title:"",project:projects[0]?.id||"",assignees:preAssignee?[preAssignee]:[],status:"Todo",priority:"Medium",startDate:"",deadline:""}:{name:"",category:depts[0]?.key||"",status:"In Progress",startDate:"",deadline:"",team:preAssignee?[preAssignee]:[],tags:""});
+  const [vals,setVals]=useState(isTask?{title:"",project:projects[0]?.id||"",assignees:preAssignee?[preAssignee]:[],status:"Todo",priority:"Medium",startDate:"",deadline:""}:{name:"",category:fixedDept||depts[0]?.key||"",status:"In Progress",startDate:"",deadline:"",team:preAssignee?[preAssignee]:[],tags:""});
   const set=(k,v)=>setVals(p=>({...p,[k]:v})); const valid=isTask?vals.title.trim():vals.name.trim(); const IS=inpStyle(T);
   const submit=()=>{ if(!valid) return; if(isTask) onSave({id:Date.now(),...vals,project:Number(vals.project),assignees:vals.assignees||[],tags:[],subtasks:[]}); else onSave({id:Date.now(),...vals,progress:0,team:vals.team||[],tags:vals.tags.split(",").map(t=>t.trim()).filter(Boolean)}); onClose(); };
   return (
@@ -232,7 +232,7 @@ function QuickAddModal({ type, preAssignee, projects, depts, onSave, onClose }) 
           <Field label="Assignees"><div style={{ paddingTop:4 }}><MultiAssignee values={vals.assignees} onSave={v=>set("assignees",v)} size={28} label="Click to assign"/></div></Field>
         </>:<>
           <Field label="Project Name" required><input value={vals.name} onChange={e=>set("name",e.target.value)} placeholder="e.g. Q3 Campaign" style={IS}/></Field>
-          <Field label="Department" required><select value={vals.category} onChange={e=>set("category",e.target.value)} style={IS}>{depts.map(d=><option key={d.key} value={d.key}>{d.icon} {d.key}</option>)}</select></Field>
+          {!fixedDept&&<Field label="Department" required><select value={vals.category} onChange={e=>set("category",e.target.value)} style={IS}>{depts.map(d=><option key={d.key} value={d.key}>{d.icon} {d.key}</option>)}</select></Field>}
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
             <Field label="Status"><select value={vals.status} onChange={e=>set("status",e.target.value)} style={IS}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></Field>
             <Field label="Start Date"><input type="date" value={vals.startDate} onChange={e=>set("startDate",e.target.value)} style={IS}/></Field>
@@ -549,7 +549,7 @@ function ProjectsDetail({ dept, projects, setProjects, tasks, currentUser, onBac
           </div>
         )}
       </div>
-      {showAdd&&<QuickAddModal type="project" projects={projects} depts={depts} onSave={v=>{ setProjects(ps=>[...ps,{...v,category:dept.key}]); setShowAdd(false); }} onClose={()=>setShowAdd(false)}/>}
+      {showAdd&&<QuickAddModal type="project" projects={projects} depts={depts} fixedDept={dept.key} onSave={v=>{ setProjects(ps=>[...ps,{...v,category:dept.key}]); setShowAdd(false); }} onClose={()=>setShowAdd(false)}/>}
       {delId&&<ConfirmModal title="Delete Project?" message="This will permanently remove the project." onConfirm={()=>del(delId)} onClose={()=>setDelId(null)}/>}
     </div>
   );
