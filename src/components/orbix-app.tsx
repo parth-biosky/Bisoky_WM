@@ -135,7 +135,7 @@ function MultiAssignee({ values=[], onSave, size=24, max=4, label="+ Assign" }) 
   const T = useT(); const { users } = useUsers();
   const [open,setOpen]=useState(false),[pos,setPos]=useState({}), [search,setSearch]=useState(""),tRef=useRef(),mRef=useRef();
   useEffect(()=>{ if(!open) return; const h=e=>{ if(!tRef.current?.contains(e.target)&&!mRef.current?.contains(e.target)){setOpen(false);setSearch("");} }; document.addEventListener("mousedown",h); return ()=>document.removeEventListener("mousedown",h); },[open]);
-  const openMenu=e=>{ e.stopPropagation(); if(!open&&tRef.current){ const r=tRef.current.getBoundingClientRect(); setPos({top:r.bottom+6,left:r.left}); } setOpen(o=>!o); if(open) setSearch(""); };
+  const openMenu=e=>{ e.stopPropagation(); if(!open&&tRef.current){ const r=tRef.current.getBoundingClientRect(); const dropH=280; const spaceBelow=window.innerHeight-r.bottom; const top=spaceBelow<dropH?Math.max(8,r.top-dropH-6):r.bottom+6; const left=Math.min(r.left,window.innerWidth-240); setPos({top,left}); } setOpen(o=>!o); if(open) setSearch(""); };
   const toggle=id=>onSave(values.includes(id)?values.filter(v=>v!==id):[...values,id]);
   const filtered=users.filter(u=>u.name.toLowerCase().includes(search.toLowerCase()));
   return (
@@ -150,7 +150,7 @@ function MultiAssignee({ values=[], onSave, size=24, max=4, label="+ Assign" }) 
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search members…" style={{ border:"none",outline:"none",fontSize:12,fontFamily:T.font,color:T.text,background:"transparent",flex:1 }}/>
         </div>
         <div style={{ padding:"0 4px 5px",fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:0.6,textTransform:"uppercase",borderBottom:"1px solid "+T.border,marginBottom:4 }}>Assignees · {values.length} selected</div>
-        <div style={{ overflowY:"auto",maxHeight:220 }}>
+        <div style={{ overflowY:"auto",maxHeight:220,minHeight:40,scrollbarWidth:"thin",scrollbarColor:T.borderMed+" transparent" }}>
           {filtered.length===0&&<div style={{ padding:"10px",fontSize:12,color:T.textMuted,textAlign:"center" }}>No members found</div>}
           {filtered.map(u=>{ const sel=values.includes(u.id); return (
             <div key={u.id} onClick={()=>toggle(u.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:8,cursor:"pointer",background:sel?T.accentSub:"transparent",marginBottom:2 }} onMouseEnter={e=>{ if(!sel) e.currentTarget.style.background=T.bg; }} onMouseLeave={e=>{ if(!sel) e.currentTarget.style.background="transparent"; }}>
