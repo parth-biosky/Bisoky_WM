@@ -29,14 +29,16 @@ function dropByKey(prev: any[], key: string): any[] {
 }
 
 export function subscribeAll(opts: {
-  setProjects: Setter<any>;
-  setTasks:    Setter<any>;
-  setMessages: Setter<any>;
-  setMeetings: Setter<any>;
-  setDepts:    Setter<any>;
-  setUsers:    Setter<any>;
+  setProjects:    Setter<any>;
+  setTasks:       Setter<any>;
+  setMessages:    Setter<any>;
+  setMeetings:    Setter<any>;
+  setDepts:       Setter<any>;
+  setUsers:       Setter<any>;
+  onStatusChange?: (status: "connecting" | "connected" | "error") => void;
 }) {
   const s = createClient();
+  opts.onStatusChange?.("connecting");
 
   // DB schema: each row = { id|key, data: JSONB, ... }
   // Actual app object lives in the `data` column → p.new["data"]
@@ -107,7 +109,11 @@ export function subscribeAll(opts: {
       opts.setDepts(prev => dropByKey(prev, r["key"]));
     })
 
-    .subscribe();
+    .subscribe((status, err) => {
+      if (status === "SUBSCRIBED")     opts.onStatusChange?.("connected");
+      if (status === "CHANNEL_ERROR")  { console.error("[Realtime]", err); opts.onStatusChange?.("error"); }
+      if (status === "TIMED_OUT")      opts.onStatusChange?.("error");
+    });
 
   return () => { s.removeChannel(channel); };
 }

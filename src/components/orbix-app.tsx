@@ -438,11 +438,13 @@ function Login({ onLogin, dark, setDark }) {
 const NAV_A=[["projects","Projects","M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"],["tasks","Tasks","M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"],["teams","Teams","M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"],["timeline","Timeline","M3 6h4M3 12h8M3 18h6M9 6h12M13 12h8M11 18h10"],["calendar","Calendar","M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"],["report","Reports","M18 20V10M12 20V4M6 20v-6"],["chat","Chat","M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"]];
 const NAV_M=[["dashboard","Dashboard","M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"],["projects","Projects","M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"],["tasks","My Tasks","M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"],["team","Team","M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"],["timeline","Timeline","M3 6h4M3 12h8M3 18h6M9 6h12M13 12h8M11 18h10"],["calendar","Calendar","M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"],["report","My Reports","M18 20V10M12 20V4M6 20v-6"],["chat","Chat","M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"]];
 const NavIcon=({d})=><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d.split("M").filter(Boolean).map((seg,i)=><path key={i} d={"M"+seg}/>)}</svg>;
-function Sidebar({ user, active, setActive, onLogout, dark, setDark }) {
+function Sidebar({ user, active, setActive, onLogout, dark, setDark, rtStatus }) {
   const T=useT(); const isA=user.role==="admin",items=isA?NAV_A:NAV_M;
+  const rtColor = rtStatus==="connected"?"#10B981":rtStatus==="error"?"#EF4444":"#F59E0B";
+  const rtLabel = rtStatus==="connected"?"Live":"Connecting…";
   return (
     <div style={{ width:216,minWidth:216,background:T.surface,borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,fontFamily:T.font }}>
-      <div style={{ padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:9 }}><div style={{ width:28,height:28,borderRadius:8,background:"#0052CC",display:"flex",alignItems:"center",justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="2" fill="#fff"/><rect x="11" y="2" width="7" height="7" rx="2" fill="#fff" opacity=".55"/><rect x="2" y="11" width="7" height="7" rx="2" fill="#fff" opacity=".55"/><rect x="11" y="11" width="7" height="7" rx="2" fill="#fff" opacity=".25"/></svg></div><span style={{ fontWeight:700,fontSize:14,color:T.text }}>Orbix Studio</span></div>
+      <div style={{ padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:9 }}><div style={{ width:28,height:28,borderRadius:8,background:"#0052CC",display:"flex",alignItems:"center",justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="2" fill="#fff"/><rect x="11" y="2" width="7" height="7" rx="2" fill="#fff" opacity=".55"/><rect x="2" y="11" width="7" height="7" rx="2" fill="#fff" opacity=".55"/><rect x="11" y="11" width="7" height="7" rx="2" fill="#fff" opacity=".25"/></svg></div><span style={{ fontWeight:700,fontSize:14,color:T.text }}>Orbix Studio</span><div style={{ marginLeft:"auto",display:"flex",alignItems:"center",gap:4 }}><div style={{ width:7,height:7,borderRadius:"50%",background:rtColor,boxShadow:rtStatus==="connected"?"0 0 6px "+rtColor:"none" }}/><span style={{ fontSize:9,fontWeight:600,color:rtColor }}>{rtLabel}</span></div></div>
       <div style={{ margin:"0 10px 6px",padding:"9px 10px",borderRadius:8,background:T.bg,display:"flex",alignItems:"center",gap:9 }}><Av user={user} size={28}/><div style={{ flex:1,minWidth:0 }}><div style={{ fontSize:12,fontWeight:600,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{user.name.split(" ")[0]}</div><div style={{ fontSize:10,color:T.textMuted,textTransform:"capitalize" }}>{user.role}</div></div></div>
       <nav style={{ flex:1,padding:"4px 8px",overflowY:"auto" }}>
         <div style={{ fontSize:10,fontWeight:600,color:T.textTiny,letterSpacing:1.2,textTransform:"uppercase",padding:"6px 10px 4px",marginTop:4 }}>{isA?"Management":"Workspace"}</div>
@@ -1068,14 +1070,16 @@ export default function OrbixApp({ supabaseUser, onSignOut }) {
   }, []);
 
   // ── Realtime WebSocket subscriptions ──────────────────────────────────────
-  // Loop prevention: safeById/safeByKey in orbix-realtime.ts returns the SAME
-  // array reference when data is identical → React skips re-render → no sync fires.
+  const [rtStatus, setRtStatus] = useState<"connecting"|"connected"|"error">("connecting");
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let mounted = true;
     import("@/lib/orbix-realtime").then(({ subscribeAll }) => {
       if (!mounted) return;
-      unsub = subscribeAll({ setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers });
+      unsub = subscribeAll({
+        setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers,
+        onStatusChange: (s) => { if (mounted) setRtStatus(s); },
+      });
     });
     return () => { mounted = false; unsub?.(); };
   }, []);
@@ -1118,7 +1122,7 @@ export default function OrbixApp({ supabaseUser, onSignOut }) {
   return (
     <ThemeCtx.Provider value={theme}><UsersCtx.Provider value={usersCtx}>
       <div style={{display:"flex",height:"100vh",background:theme.bg,fontFamily:theme.font,overflow:"hidden"}}>
-        <Sidebar user={liveUser} active={active} setActive={setActive} onLogout={onSignOut} dark={dark} setDark={setDark}/>
+        <Sidebar user={liveUser} active={active} setActive={setActive} onLogout={onSignOut} dark={dark} setDark={setDark} rtStatus={rtStatus}/>
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>{views[active]||views.projects}</div>
       </div>
     </UsersCtx.Provider></ThemeCtx.Provider>
