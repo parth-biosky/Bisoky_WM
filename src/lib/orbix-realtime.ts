@@ -3,21 +3,28 @@ import { createClient } from "./supabase/client";
 
 type Setter<T> = Dispatch<SetStateAction<T[]>>;
 
-// Generic merge by id — for projects, tasks, meetings, messages, team_members
-function mergeById(prev: any[], item: any): any[] {
-  if (prev.find(x => x.id === item.id)) return prev.map(x => x.id === item.id ? item : x);
-  return [...prev, item];
+/**
+ * Safe merge — returns the SAME array reference if nothing changed.
+ * Same reference = React skips re-render = sync effect doesn't fire = no infinite loop.
+ */
+function safeById(prev: any[], item: any): any[] {
+  const i = prev.findIndex(x => x.id === item.id);
+  if (i === -1) return [...prev, item];
+  if (JSON.stringify(prev[i]) === JSON.stringify(item)) return prev; // identical → no change
+  const next = [...prev]; next[i] = item; return next;
 }
-function removeById(prev: any[], id: any): any[] {
+function safeByKey(prev: any[], item: any): any[] {
+  const i = prev.findIndex(x => x.key === item.key);
+  if (i === -1) return [...prev, item];
+  if (JSON.stringify(prev[i]) === JSON.stringify(item)) return prev;
+  const next = [...prev]; next[i] = item; return next;
+}
+function dropById(prev: any[], id: any): any[] {
+  if (!prev.find(x => x.id === id)) return prev;
   return prev.filter(x => x.id !== id);
 }
-
-// Department-specific — primary key is `key` (string)
-function mergeDept(prev: any[], item: any): any[] {
-  if (prev.find(x => x.key === item.key)) return prev.map(x => x.key === item.key ? item : x);
-  return [...prev, item];
-}
-function removeDept(prev: any[], key: string): any[] {
+function dropByKey(prev: any[], key: string): any[] {
+  if (!prev.find(x => x.key === key)) return prev;
   return prev.filter(x => x.key !== key);
 }
 
@@ -28,78 +35,76 @@ export function subscribeAll(opts: {
   setMeetings: Setter<any>;
   setDepts:    Setter<any>;
   setUsers:    Setter<any>;
-  onRealtimeEvent: () => void;   // called every time a realtime change arrives
 }) {
   const s = createClient();
-  const rt = opts.onRealtimeEvent;
 
-  // Our DB schema: each row is { id/key, data: JSONB, ... }
-  // p.new.data = the actual JS object stored in the JSONB column
+  // DB schema: each row = { id|key, data: JSONB, ... }
+  // Actual app object lives in the `data` column → p.new["data"]
 
   const channel = s
-    .channel("biosky-realtime")
+    .channel("biosky-rt-v2")
 
     // ── Team Chat ─────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "team_messages" }, p => {
-      rt(); opts.setMessages(prev => mergeById(prev, p.new["data"]));
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "team_messages" }, ({ new: r }) => {
+      opts.setMessages(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "team_messages" }, p => {
-      rt(); opts.setMessages(prev => removeById(prev, p.old["id"]));
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "team_messages" }, ({ old: r }) => {
+      opts.setMessages(prev => dropById(prev, r["id"]));
     })
 
-    // ── Tasks ─────────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" }, p => {
-      rt(); opts.setTasks(prev => mergeById(prev, p.new["data"]));
+    // ── Tasks (includes subtasks, subtask chat, subtask notes) ────
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" }, ({ new: r }) => {
+      opts.setTasks(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, p => {
-      rt(); opts.setTasks(prev => prev.map(t => t.id === p.new["id"] ? p.new["data"] : t));
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, ({ new: r }) => {
+      opts.setTasks(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "tasks" }, p => {
-      rt(); opts.setTasks(prev => removeById(prev, p.old["id"]));
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "tasks" }, ({ old: r }) => {
+      opts.setTasks(prev => dropById(prev, r["id"]));
     })
 
     // ── Projects ──────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "projects" }, p => {
-      rt(); opts.setProjects(prev => mergeById(prev, p.new["data"]));
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "projects" }, ({ new: r }) => {
+      opts.setProjects(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "projects" }, p => {
-      rt(); opts.setProjects(prev => prev.map(x => x.id === p.new["id"] ? p.new["data"] : x));
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "projects" }, ({ new: r }) => {
+      opts.setProjects(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "projects" }, p => {
-      rt(); opts.setProjects(prev => removeById(prev, p.old["id"]));
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "projects" }, ({ old: r }) => {
+      opts.setProjects(prev => dropById(prev, r["id"]));
     })
 
-    // ── Meetings ──────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "meetings" }, p => {
-      rt(); opts.setMeetings(prev => mergeById(prev, p.new["data"]));
+    // ── Meetings / Calendar ───────────────────────────────────────
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "meetings" }, ({ new: r }) => {
+      opts.setMeetings(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meetings" }, p => {
-      rt(); opts.setMeetings(prev => prev.map(x => x.id === p.new["id"] ? p.new["data"] : x));
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meetings" }, ({ new: r }) => {
+      opts.setMeetings(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "meetings" }, p => {
-      rt(); opts.setMeetings(prev => removeById(prev, p.old["id"]));
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "meetings" }, ({ old: r }) => {
+      opts.setMeetings(prev => dropById(prev, r["id"]));
     })
 
     // ── Team Members ──────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "team_members" }, p => {
-      rt(); opts.setUsers(prev => mergeById(prev, p.new["data"]));
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "team_members" }, ({ new: r }) => {
+      opts.setUsers(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "team_members" }, p => {
-      rt(); opts.setUsers(prev => prev.map(x => x.id === p.new["id"] ? p.new["data"] : x));
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "team_members" }, ({ new: r }) => {
+      opts.setUsers(prev => safeById(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "team_members" }, p => {
-      rt(); opts.setUsers(prev => removeById(prev, p.old["id"]));
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "team_members" }, ({ old: r }) => {
+      opts.setUsers(prev => dropById(prev, r["id"]));
     })
 
-    // ── Departments ───────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "departments" }, p => {
-      rt(); opts.setDepts(prev => mergeDept(prev, p.new["data"]));
+    // ── Departments / Categories ──────────────────────────────────
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "departments" }, ({ new: r }) => {
+      opts.setDepts(prev => safeByKey(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "departments" }, p => {
-      rt(); opts.setDepts(prev => prev.map(x => x.key === p.new["key"] ? p.new["data"] : x));
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "departments" }, ({ new: r }) => {
+      opts.setDepts(prev => safeByKey(prev, r["data"]));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "departments" }, p => {
-      rt(); opts.setDepts(prev => removeDept(prev, p.old["key"]));
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "departments" }, ({ old: r }) => {
+      opts.setDepts(prev => dropByKey(prev, r["key"]));
     })
 
     .subscribe();

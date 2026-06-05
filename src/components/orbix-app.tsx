@@ -1068,31 +1068,29 @@ export default function OrbixApp({ supabaseUser, onSignOut }) {
   }, []);
 
   // ── Realtime WebSocket subscriptions ──────────────────────────────────────
-  // lastRealtimeTs: timestamp of last inbound realtime event.
-  // Sync effects skip writing back to DB if a realtime event just arrived
-  // (prevents: realtime → state → sync → DB write → realtime → ∞ loop)
-  const lastRealtimeTs = useRef(0);
-  const onRealtimeEvent = useCallback(() => { lastRealtimeTs.current = Date.now(); }, []);
-
+  // Loop prevention: safeById/safeByKey in orbix-realtime.ts returns the SAME
+  // array reference when data is identical → React skips re-render → no sync fires.
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let mounted = true;
     import("@/lib/orbix-realtime").then(({ subscribeAll }) => {
       if (!mounted) return;
-      unsub = subscribeAll({ setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers, onRealtimeEvent });
+      unsub = subscribeAll({ setProjects, setTasks, setMessages, setMeetings, setDepts, setUsers });
     });
     return () => { mounted = false; unsub?.(); };
-  }, [onRealtimeEvent]);
+  }, []);
   // ──────────────────────────────────────────────────────────────────────────
 
-  // Sync effects: debounced 120ms, skip if change came from realtime (< 400ms ago)
-  const isLocalChange = () => syncReady.current && (Date.now() - lastRealtimeTs.current > 400);
-  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncProjects})=>syncProjects(projects)); },120); return()=>clearTimeout(t); }, [projects]);
-  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncTasks})=>syncTasks(tasks)); },120); return()=>clearTimeout(t); }, [tasks]);
-  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncMeetings})=>syncMeetings(meetings)); },120); return()=>clearTimeout(t); }, [meetings]);
-  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncMessages})=>syncMessages(messages)); },120); return()=>clearTimeout(t); }, [messages]);
-  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncDepts})=>syncDepts(depts)); },120); return()=>clearTimeout(t); }, [depts]);
-  useEffect(() => { if (!isLocalChange()) return; const t=setTimeout(()=>{ import("@/lib/orbix-db").then(({syncMembers})=>syncMembers(users)); },120); return()=>clearTimeout(t); }, [users]);
+  // Sync effects — ALWAYS save when state changes (after initial load).
+  // 300ms debounce batches rapid consecutive changes into one DB write.
+  // The infinite-loop guard is in orbix-realtime.ts via reference equality.
+  const sync = (fn: () => void) => { if (!syncReady.current) return; const t = setTimeout(fn, 300); return () => clearTimeout(t); };
+  useEffect(() => sync(() => import("@/lib/orbix-db").then(({syncProjects}) => syncProjects(projects))), [projects]);
+  useEffect(() => sync(() => import("@/lib/orbix-db").then(({syncTasks})    => syncTasks(tasks))),    [tasks]);
+  useEffect(() => sync(() => import("@/lib/orbix-db").then(({syncMeetings}) => syncMeetings(meetings))), [meetings]);
+  useEffect(() => sync(() => import("@/lib/orbix-db").then(({syncMessages}) => syncMessages(messages))), [messages]);
+  useEffect(() => sync(() => import("@/lib/orbix-db").then(({syncDepts})    => syncDepts(depts))),    [depts]);
+  useEffect(() => sync(() => import("@/lib/orbix-db").then(({syncMembers})  => syncMembers(users))),  [users]);
   // ──────────────────────────────────────────────────────────────────────────
 
   if(!user) return (
